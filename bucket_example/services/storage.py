@@ -1,3 +1,4 @@
+import base64
 import logging
 import uuid
 
@@ -69,17 +70,25 @@ def subir_imagen(archivo) -> str | None:
         return None
 
 
-def obtener_url_publica(img_foto: str) -> str:
-    """Genera la URL publica de una imagen en Supabase Storage."""
+def obtener_imagen_base64(img_foto: str) -> str:
+    """
+    Descarga una imagen del bucket de Supabase Storage y la retorna
+    como un data URI en base64 (ej: 'data:image/jpeg;base64,...').
+    """
     if not img_foto:
         return ''
-    
+
     try:
         client = _get_client()
-        response = client.storage.from_(SUPABASE_BUCKET).get_public_url(img_foto)
+        contenido = client.storage.from_(SUPABASE_BUCKET).download(img_foto)
 
-        return response
+        extension = img_foto.rsplit('.', 1)[1].lower() if '.' in img_foto else 'jpeg'
+        mime_type = f'image/{extension}'
+
+        b64 = base64.b64encode(contenido).decode('utf-8')
+
+        return f'data:{mime_type};base64,{b64}'
     except Exception as e:
-        logger.error(f"Error al obtener URL publica de {img_foto}: {e}")
+        logger.error(f"Error al descargar imagen {img_foto} desde Supabase Storage: {e}")
 
         return ''

@@ -3,7 +3,7 @@ from ..constants import ERROR_CODE_MASCOTA_NOT_FOUND
 from ..utils import construir_error_api
 from ..validators.mascotas import validar_body_mascota, validar_body_mascota_put, validar_body_mascota_patch
 from .. import db
-from .storage import obtener_url_publica
+from .storage import obtener_imagen_base64
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ def construir_mascota_resumen_dto(mascota: dict) -> dict:
         'edad_meses':    mascota['edad_meses'],
         'sexo':          mascota['sexo'],
         'img_foto':      mascota['img_foto'],
-        'img_url':       obtener_url_publica(mascota['img_foto']),
+        'img_base64':    obtener_imagen_base64(mascota['img_foto']),
         'estado':        mascota['estado']
     }
 
