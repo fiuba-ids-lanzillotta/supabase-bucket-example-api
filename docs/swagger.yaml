@@ -1,0 +1,471 @@
+openapi: 3.0.0
+info:
+  title: Supabase Bucket Example - API
+  description: |-
+    API REST de ejemplo que permite gestionar mascotas en adopcion, subiendo la imagen
+    de cada una a un bucket de Supabase Storage y persistiendo el resto de los datos en
+    PostgreSQL via SQLAlchemy con queries literales.
+
+    Todos los endpoints cuelgan del prefijo `/bucket_example_api`.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/bucket_example_api
+paths:
+  /mascotas:
+    get:
+      summary: "Listar mascotas (con filtros y paginacion)"
+      tags:
+        - Mascotas
+      parameters:
+        - $ref: '#/components/parameters/EspecieParam'
+        - $ref: '#/components/parameters/SexoParam'
+        - $ref: '#/components/parameters/EstadoParam'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          $ref: '#/components/responses/GetMascotaList200'
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      summary: "Crear mascota (multipart/form-data con imagen)"
+      description: |-
+        Crea una mascota a partir de un formulario `multipart/form-data`. El campo
+        `imagen` es el archivo de foto, que se sube al bucket de Supabase. El resto
+        de los campos se persisten en PostgreSQL.
+      tags:
+        - Mascotas
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NuevaMascotaForm'
+      responses:
+        '201':
+          description: "Mascota creada"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mascota'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /mascotas/disponibles:
+    get:
+      summary: "Listar mascotas disponibles para adopcion"
+      tags:
+        - Mascotas
+      responses:
+        '200':
+          description: "Listado de mascotas disponibles (sin paginacion)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mascotas:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Mascota'
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+  /mascotas/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdMascota'
+    get:
+      summary: "Obtener una mascota por id"
+      tags:
+        - Mascotas
+      responses:
+        '200':
+          description: "Detalle de la mascota"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mascota'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      summary: "Reemplazar una mascota"
+      tags:
+        - Mascotas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MascotaBase'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    patch:
+      summary: "Actualizar parcialmente una mascota"
+      tags:
+        - Mascotas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MascotaActualizacion'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      summary: "Eliminar una mascota"
+      tags:
+        - Mascotas
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  schemas:
+    Especie:
+      type: string
+      enum:
+        - perro
+        - gato
+        - conejo
+        - ave
+        - otro
+      example: "perro"
+    Sexo:
+      type: string
+      enum:
+        - macho
+        - hembra
+      example: "macho"
+    Estado:
+      type: string
+      enum:
+        - disponible
+        - adoptado
+        - en_proceso
+      example: "disponible"
+    MascotaResumen:
+      type: object
+      description: "Informacion basica de una mascota, usada en el listado"
+      properties:
+        id:
+          type: integer
+          example: 1
+        nombre:
+          type: string
+          example: "Firulais"
+        especie:
+          $ref: '#/components/schemas/Especie'
+        raza:
+          type: string
+          example: "Labrador"
+        edad_meses:
+          type: integer
+          minimum: 0
+          example: 24
+        sexo:
+          $ref: '#/components/schemas/Sexo'
+        img_foto:
+          type: string
+          description: "URL publica de la imagen en el bucket de Supabase"
+          example: "https://xxx.supabase.co/storage/v1/object/public/mascotas-fotos/abc.jpg"
+        img_base64:
+          type: string
+          description: "Imagen codificada en base64 (opcional, segun el endpoint)"
+          example: "iVBORw0KGgoAAAANSUhEUgAA..."
+        estado:
+          $ref: '#/components/schemas/Estado'
+    Mascota:
+      description: "Informacion completa de una mascota"
+      allOf:
+        - $ref: '#/components/schemas/MascotaResumen'
+        - type: object
+          properties:
+            descripcion:
+              type: string
+              example: "Cachorro juguetón y sociable"
+            fecha_ingreso:
+              type: string
+              format: date
+              example: "2025-01-15"
+    MascotaBase:
+      type: object
+      description: "Datos necesarios para reemplazar una mascota (PUT)"
+      required:
+        - nombre
+        - especie
+        - raza
+        - edad_meses
+        - sexo
+        - descripcion
+        - estado
+        - fecha_ingreso
+      properties:
+        nombre:
+          type: string
+          example: "Firulais"
+        especie:
+          $ref: '#/components/schemas/Especie'
+        raza:
+          type: string
+          example: "Labrador"
+        edad_meses:
+          type: integer
+          minimum: 0
+          example: 24
+        sexo:
+          $ref: '#/components/schemas/Sexo'
+        descripcion:
+          type: string
+          example: "Cachorro juguetón y sociable"
+        img_foto:
+          type: string
+          example: "https://xxx.supabase.co/storage/v1/object/public/mascotas-fotos/abc.jpg"
+        estado:
+          $ref: '#/components/schemas/Estado'
+        fecha_ingreso:
+          type: string
+          format: date
+          example: "2025-01-15"
+    MascotaActualizacion:
+      type: object
+      description: "Campos opcionales para actualizar parcialmente (PATCH). Al menos uno debe estar presente."
+      properties:
+        nombre:
+          type: string
+        especie:
+          $ref: '#/components/schemas/Especie'
+        raza:
+          type: string
+        edad_meses:
+          type: integer
+          minimum: 0
+        sexo:
+          $ref: '#/components/schemas/Sexo'
+        descripcion:
+          type: string
+        img_foto:
+          type: string
+        estado:
+          $ref: '#/components/schemas/Estado'
+        fecha_ingreso:
+          type: string
+          format: date
+    NuevaMascotaForm:
+      type: object
+      description: "Body multipart/form-data para POST /mascotas"
+      required:
+        - nombre
+        - especie
+        - raza
+        - edad_meses
+        - sexo
+        - descripcion
+        - fecha_ingreso
+        - imagen
+      properties:
+        nombre:
+          type: string
+          example: "Firulais"
+        especie:
+          $ref: '#/components/schemas/Especie'
+        raza:
+          type: string
+          example: "Labrador"
+        edad_meses:
+          type: integer
+          minimum: 0
+          example: 24
+        sexo:
+          $ref: '#/components/schemas/Sexo'
+        descripcion:
+          type: string
+          example: "Cachorro juguetón y sociable"
+        fecha_ingreso:
+          type: string
+          format: date
+          example: "2025-01-15"
+        imagen:
+          type: string
+          format: binary
+          description: "Archivo de imagen (png, jpg, jpeg, gif o webp). Tamaño maximo 5MB."
+    MascotaListResponse:
+      type: object
+      description: "Respuesta paginada para el listado de mascotas"
+      properties:
+        mascotas:
+          type: array
+          items:
+            $ref: '#/components/schemas/MascotaResumen'
+        _links:
+          $ref: '#/components/schemas/Links'
+    Errores:
+      type: object
+      properties:
+        errors:
+          type: array
+          description: "Listado de errores"
+          items:
+            $ref: '#/components/schemas/Error'
+    Error:
+      type: object
+      description: "Estructura de datos que contiene los detalles del error"
+      properties:
+        code:
+          type: string
+          description: "Codigo de error alfanumerico unico legible por humanos"
+          example: "mascota.not.found"
+        message:
+          type: string
+          description: "Breve resumen del problema reportado"
+          example: "Mascota no encontrada"
+        level:
+          type: string
+          description: "Nivel del problema reportado"
+          example: "error"
+          enum:
+            - info
+            - warning
+            - error
+        description:
+          type: string
+          description: "Descripcion detallada del problema reportado"
+          example: "No existe una mascota con id '99'"
+    Links:
+      type: object
+      description: "Estructura de enlaces HATEOAS para navegar entre paginas"
+      properties:
+        _first:
+          type: object
+          properties:
+            href:
+              type: string
+              example: "http://localhost:5000/bucket_example_api/mascotas?_offset=0&_limit=10"
+        _prev:
+          type: object
+          properties:
+            href:
+              type: string
+              example: "http://localhost:5000/bucket_example_api/mascotas?_offset=0&_limit=10"
+        _next:
+          type: object
+          properties:
+            href:
+              type: string
+              example: "http://localhost:5000/bucket_example_api/mascotas?_offset=10&_limit=10"
+        _last:
+          type: object
+          properties:
+            href:
+              type: string
+              example: "http://localhost:5000/bucket_example_api/mascotas?_offset=20&_limit=10"
+  parameters:
+    IdMascota:
+      name: id
+      in: path
+      schema:
+        type: integer
+        minimum: 1
+      description: "Id de la mascota"
+      required: true
+      example: 1
+    EspecieParam:
+      name: especie
+      in: query
+      schema:
+        $ref: '#/components/schemas/Especie'
+      required: false
+      example: "perro"
+    SexoParam:
+      name: sexo
+      in: query
+      schema:
+        $ref: '#/components/schemas/Sexo'
+      required: false
+      example: "macho"
+    EstadoParam:
+      name: estado
+      in: query
+      schema:
+        $ref: '#/components/schemas/Estado'
+      required: false
+      example: "disponible"
+    Limit:
+      name: _limit
+      in: query
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+      description: |-
+        Cantidad maxima de registros que se incluiran en cada pagina de la respuesta.
+
+        El valor por defecto es 10.
+      required: false
+      example: 10
+    Offset:
+      name: _offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+      description: |-
+        Identificador de paginacion devuelto por la API cuando se utilizan los enlaces
+        HATEOAS `_prev` o `_next`. Si no se especifica, default = 0.
+      required: false
+      example: 0
+  responses:
+    GetMascotaList200:
+      description: "OK"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/MascotaListResponse'
+    NoContent:
+      description: "No Content"
+    BadRequest:
+      description: "Bad Request"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errores'
+    NotFound:
+      description: "Not Found"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errores'
+    InternalServerError:
+      description: "Internal Server Error"
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Errores'

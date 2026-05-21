@@ -48,9 +48,20 @@ supabase-bucket-example-api/
 │   │   └── storage.py              # Operaciones con Supabase Storage
 │   └── validators/
 │       └── mascotas.py             # Validacion de entrada
-└── db/
-    └── supabase_ddl.sql            # Esquema + datos iniciales (ejecutar en Supabase SQL Editor)
+├── db/
+│   └── supabase_ddl.sql            # Esquema + datos iniciales (ejecutar en Supabase SQL Editor)
+└── docs/
+    └── swagger.yaml                # Documentacion OpenAPI 3.0 de la API
 ```
+
+## Documentacion (Swagger / OpenAPI)
+
+La especificacion completa de la API en formato OpenAPI 3.0 vive en
+[`docs/swagger.yaml`](docs/swagger.yaml). Se puede visualizar de varias formas:
+
+- Pegando el contenido del archivo en [editor.swagger.io](https://editor.swagger.io).
+- Abriendolo con la extension "Swagger Viewer" (o similar) en VSCode.
+- Sirviendolo con cualquier renderer compatible con OpenAPI 3.
 
 ## Requisitos previos
 
